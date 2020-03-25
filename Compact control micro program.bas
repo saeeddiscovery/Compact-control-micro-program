@@ -1,5 +1,5 @@
 $regfile = "m128def.dat"
-$crystal = 11059200
+$crystal = 8000000
 $baud = 19200
 
 $hwstack = 64
@@ -652,14 +652,14 @@ Read_positions:
    F = F * Collim_fine_length
    Collim_cofin = E + F
 
-'(
+
    Gant_cofin = -18000
    Collim_cofin = 9000
    X1_co = 2048
    X2_co = 2048
    Y1_co = 2048
    Y2_co = 2048
-')
+
    Adcheck = 2048
 
 Return
