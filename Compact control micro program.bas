@@ -1,5 +1,6 @@
 $regfile = "m128def.dat"
 $crystal = 11059200
+'$crystal = 8000000
 $baud = 19200
 
 $hwstack = 64
@@ -36,7 +37,7 @@ Config Watchdog = 2048
 Start Watchdog
 
 
-Dim X As Byte , Y As Byte , I As Byte , J As Byte , S As String * 1 , S1 As String * 50 , S2 As String * 15
+Dim X As Byte , Y As Byte , I As Byte , J As Byte , K As Byte , S As String * 1 , S1 As String * 50 , S2 As String * 15
 Dim A As Word , B(20) As Word , C As Long , D(2) As String * 50 , G(6) As String * 10 , H(10) As Byte
 
 Dim M As Long , O As Long , P As Long
@@ -55,7 +56,7 @@ Dim T0_def As Byte , T1_def As Byte , T2_def As Byte
 
 Dim Is_diag As Byte , Is_service As Byte
 
-Dim Adc_reading(11) As Word
+Dim Adc_rd(11) As Word
 
 Dim X1_co As Long
 Dim X2_co As Long
@@ -92,8 +93,8 @@ Dim Collim_f1 As Word
 Dim Collim_f2 As Word
 Dim Collim_cofin As Long
 
-Dim Gant_zpnt As Word , Gant_length As Integer , Gant_fine_length As Word , Gant_gain As Long , Gant_offset As Long
-Dim Collim_zpnt As Word , Collim_length As Integer , Collim_fine_length As Word , Collim_gain As Long , Collim_offset As Long
+Dim Gant_zpnt As Word , Gant_length As Long , Gant_fine_length As Word , Gant_gain As Long , Gant_offset As Long
+Dim Collim_zpnt As Word , Collim_length As Long , Collim_fine_length As Word , Collim_gain As Long , Collim_offset As Long
 
 
 Dim Gant As Long , Gant_tol As Long , Gant_tol0 As Long , Gant_tol1 As Long , Gant_tol2 As Long
@@ -148,6 +149,7 @@ Declare Function Get_init() As Long
 Declare Sub Send(byval S As String * 3 , Byval A As Long)
 Declare Sub Get_setpoint()
 Declare Function Get_diag() As Byte
+Declare Function Adc_read(byval Adc_number As Byte , Byval Adc_repeat As Byte) As Word
 
 Reset Watchdog
 Enable Interrupts
@@ -526,6 +528,7 @@ Srout:
       Call Send( "cf1" , Collim_f1)
       Call Send( "cf2" , Collim_f2)
    End If
+   
    Call Send( "cfn" , Collim_cofin)
 
    Call Send( "wco" , X1_co)
@@ -555,17 +558,6 @@ Srout:
 
    Call Send( "adc" , Adcheck)
 
-
-   'Call Send( "x1v" , X1_v)
-   'Call Send( "x2v" , X2_v)
-   'Call Send( "y1v" , Y1_v)
-   'Call Send( "y2v" , Y2_v)
-
-
-   'Call Send( "r" , R_counter)
-   'Call Send( "p" , P_counter)
-   'Call Send( "s" , S_counter)
-
 Return
 
 Sub Send(byval S As String * 3 , Byval A As Long)
@@ -585,51 +577,27 @@ Read_positions:
    Reset Watchdog
 
    For I = 1 To 11
-       A = 16 - I
-       Porta = A
-
-       For J = 1 To 20
-         Adc_rc = 0
-         Waitus 1
-         Do
-         Loop Until Pinc.0 = 0
-         Adc_rc = 1
-         Waitus 1
-         B(j) = Pinf
-         A = Ping
-         A = A And 15
-         A = A * 256
-         B(j) = B(j) + A
-      Next J
-
-      Sort B(1)
-
-      C = 0
-      For J = 5 To 14
-         C = C + B(j)
-      Next J
-
-      Adc_reading(i) = C / 10
-
+      Adc_rd(i) = 0
+      Adc_rd(i) = Adc_read(i , 20)
    Next I
 
-   Gant_co = Adc_reading(1)
-   Gant_f1 = Adc_reading(2)
-   Gant_f2 = Adc_reading(3)
+   Gant_co = Adc_rd(1)
+   Gant_f1 = Adc_rd(2)
+   Gant_f2 = Adc_rd(3)
 
-   Collim_co = Adc_reading(4)
-   Collim_f1 = Adc_reading(5)
-   Collim_f2 = Adc_reading(6)
+   Collim_co = Adc_rd(4)
+   Collim_f1 = Adc_rd(5)
+   Collim_f2 = Adc_rd(6)
 
-   X1_co = Adc_reading(7)
-   X2_co = Adc_reading(8)
-   Y1_co = Adc_reading(9)
-   Y2_co = Adc_reading(10)
+   X1_co = Adc_rd(7)
+   X2_co = Adc_rd(8)
+   Y1_co = Adc_rd(9)
+   Y2_co = Adc_rd(10)
 
-   Adcheck = Adc_reading(11)
+   Adcheck = Adc_rd(11)
 
-   E = Gant_co - Gant_zpnt
-   E = E / Gant_length
+   e = Gant_co - Gant_zpnt
+   e = e / Gant_length
    F = Int(e)
    I = F Mod 2
    If I = 0 Then
@@ -663,6 +631,42 @@ Read_positions:
    Adcheck = 2048
 
 Return
+
+Function Adc_read(byval Adc_number As Byte , Byval Adc_repeat As Byte) As Word
+   A = 16 - Adc_number
+   Porta = A
+   For J = 1 To Adc_repeat
+      Adc_rc = 0
+      Waitus 1
+      Do
+      Loop Until Adc_sts = 0
+      Adc_rc = 1
+      Waitus 1
+      B(j) = Pinf
+      A = Ping
+      A = A And 15
+      A = A * 256
+      B(j) = B(j) + A
+   Next J
+
+   Sort B(1) , Adc_repeat
+
+   C = 0
+   K = 0
+
+   X = Adc_repeat / 4
+
+   Y = Adc_repeat - X
+
+   X = X + 1
+
+   For J = X To Y
+      C = C + B(j)
+      Incr K
+   Next J
+
+   Adc_read = C / K
+End Function
 
 
 
@@ -974,7 +978,7 @@ Gant_learn:
    Gant_rr = 1
 
    Do
-      Gosub Read_positions
+      Gosub Gant_pot_read
       If Gant_f1 = Gant_lower_limit Then
          Gant_zpnt = Gant_co
          Gant_upper_limit = Gant_f2
@@ -984,7 +988,7 @@ Gant_learn:
 
 
    Do
-      Gosub Read_positions
+      Gosub Gant_pot_read
       If Gant_f1 = Gant_upper_limit Then
          Gant_length = Gant_co - Gant_zpnt
          Gant_length = Abs(gant_length)
@@ -1002,57 +1006,65 @@ Gant_learn:
 '(
 Gant_zpnt = 2048
 Gant_length = 2024
-Gant_fine_length = 2024
+Gant_fine_length = 2025
 ')
 
-Gant_sync:
-   Print "c43" ; Gant_zpnt
-   Waitus Send_delay
-   Print "c44" ; Gant_length
-   Waitus Send_delay
-   Print "c45" ; Gant_fine_length
-   Waitus Send_delay
+   Do
+      Print "c43" ; Gant_zpnt
+      Waitus Send_delay
+      Print "c44" ; Gant_length
+      Waitus Send_delay
+      Print "c45" ; Gant_fine_length
+      Waitus Send_delay
 
-   Sok = 1
+      Sok = 1
 
-   S1 = ""
-      Do
-         X = waitkey()
-         If X = 47 Then Exit Do
-         S1 = S1 + Chr(x)
-      Loop
-   A = Val(s1)
-   If A <> Gant_zpnt Then Sok = 0
+      S1 = ""
+         Do
+            X = waitkey()
+            If X = 47 Then Exit Do
+            S1 = S1 + Chr(x)
+         Loop
+      A = Val(s1)
+      If A <> Gant_zpnt Then Sok = 0
 
-   S1 = ""
-      Do
-         X = waitkey()
-         If X = 47 Then Exit Do
-         S1 = S1 + Chr(x)
-      Loop
-   Z = Val(s1)
-   If Z <> Gant_length Then Sok = 0
+      S1 = ""
+         Do
+            X = waitkey()
+            If X = 47 Then Exit Do
+            S1 = S1 + Chr(x)
+         Loop
+      Z = Val(s1)
+      If Z <> Gant_length Then Sok = 0
 
-   S1 = ""
-      Do
-         X = waitkey()
-         If X = 47 Then Exit Do
-         S1 = S1 + Chr(x)
-      Loop
-   A = Val(s1)
-   If A <> Gant_fine_length Then Sok = 0
+      S1 = ""
+         Do
+            X = waitkey()
+            If X = 47 Then Exit Do
+            S1 = S1 + Chr(x)
+         Loop
+      A = Val(s1)
+      If A <> Gant_fine_length Then Sok = 0
 
+      If Sok = 1 Then Exit Do
+   Loop
 
-   If Sok = 1 Then
-      Print "lok"
-   Else
-       Goto Gant_sync
-   End If
-
+   Print "lok"
    Enable Ovf0
    Enable Ovf2
    Enable Ovf1
    Start Watchdog
+Return
+
+Gant_pot_read:
+   For I = 1 To 3
+      Adc_rd(i) = 0
+      Adc_rd(i) = Adc_read(i , 2)
+   Next I
+
+   Gant_co = Adc_rd(1)
+   Gant_f1 = Adc_rd(2)
+   Gant_f2 = Adc_rd(3)
 Return
 
 
@@ -1063,6 +1075,7 @@ Collim_learn:
 
    Stop Watchdog
 
+
    Collim_v = 160
    Call Ao(collim_v , 1)
 
@@ -1072,7 +1085,7 @@ Collim_learn:
    Collim_on = 0
 
    Do
-      Gosub Read_positions
+      Gosub Collim_pot_read
       If Collim_f1 = Collim_lower_limit Then
          Collim_zpnt = Collim_co
          Collim_upper_limit = Collim_f2
@@ -1082,7 +1095,7 @@ Collim_learn:
 
 
    Do
-      Gosub Read_positions
+      Gosub Collim_pot_read
       If Collim_f1 = Collim_upper_limit Then
          Collim_length = Collim_co - Collim_zpnt
          Collim_length = Abs(collim_length)
@@ -1099,59 +1112,67 @@ Collim_learn:
 '(
 Collim_zpnt = 2048
 Collim_length = 2024
-Collim_fine_length = 2024
+Collim_fine_length = 2025
 ')
 
-Collim_sync:
+   Do
+      Print "c46" ; Collim_zpnt
+      Waitus Send_delay
+      Print "c47" ; Collim_length
+      Waitus Send_delay
+      Print "c48" ; Collim_fine_length
+      Waitus Send_delay
 
-   Print "c46" ; Collim_zpnt
-   Waitus Send_delay
-   Print "c47" ; Collim_length
-   Waitus Send_delay
-   Print "c48" ; Collim_fine_length
-   Waitus Send_delay
+      Sok = 1
 
-   Sok = 1
+      S1 = ""
+         Do
+            X = waitkey()
+            If X = 47 Then Exit Do
+            S1 = S1 + Chr(x)
+         Loop
+      A = Val(s1)
+      If A <> Collim_zpnt Then Sok = 0
 
-   S1 = ""
-      Do
-         X = waitkey()
-         If X = 47 Then Exit Do
-         S1 = S1 + Chr(x)
-      Loop
-   A = Val(s1)
-   If A <> Collim_zpnt Then Sok = 0
+      S1 = ""
+         Do
+            X = waitkey()
+            If X = 47 Then Exit Do
+            S1 = S1 + Chr(x)
+         Loop
+      Z = Val(s1)
+      If Z <> Collim_length Then Sok = 0
 
-   S1 = ""
-      Do
-         X = waitkey()
-         If X = 47 Then Exit Do
-         S1 = S1 + Chr(x)
-      Loop
-   Z = Val(s1)
-   If Z <> Collim_length Then Sok = 0
-
-   S1 = ""
-      Do
-         X = waitkey()
-         If X = 47 Then Exit Do
-         S1 = S1 + Chr(x)
-      Loop
-   A = Val(s1)
-   If A <> Collim_fine_length Then Sok = 0
+      S1 = ""
+         Do
+            X = waitkey()
+            If X = 47 Then Exit Do
+            S1 = S1 + Chr(x)
+         Loop
+      A = Val(s1)
+      If A <> Collim_fine_length Then Sok = 0
 
 
-   If Sok = 1 Then
-      Print "lok"
-   Else
-       Goto Collim_sync
-   End If
+      If Sok = 1 Then Exit Do
+   Loop
 
+   Print "lok"
    Enable Ovf0
    Enable Ovf2
    Enable Ovf1
    Start Watchdog
 
+Return
+
+Collim_pot_read:
+   For I = 4 To 6
+      Adc_rd(i) = 0
+      Adc_rd(i) = Adc_read(i , 2)
+   Next I
+
+   Collim_co = Adc_rd(4)
+   Collim_f1 = Adc_rd(5)
+   Collim_f2 = Adc_rd(6)
 Return
 
 
