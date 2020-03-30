@@ -201,7 +201,16 @@ Enable Urxc
 Enable Ovf0
 Enable Ovf1
 Enable Ovf2
+'(
+   Gant_cofin = -58618
+   Collim_cofin = 28017
+   X1_co = 2048
+   X2_co = 2048
+   Y1_co = 2048
+   Y2_co = 2048
 
+   Adcheck = 2048
+')
 
 Do
 
@@ -528,7 +537,7 @@ Srout:
       Call Send( "cf1" , Collim_f1)
       Call Send( "cf2" , Collim_f2)
    End If
-   
+
    Call Send( "cfn" , Collim_cofin)
 
    Call Send( "wco" , X1_co)
@@ -557,7 +566,14 @@ Srout:
    End If
 
    Call Send( "adc" , Adcheck)
-
+   '(
+   Gant_cofin = Gant_cofin + 10
+   Collim_cofin = Collim_cofin + 5
+   X1_co = X1_co + 2
+   X2_co = X2_co + 2
+   Y1_co = Y1_co + 2
+   Y2_co = Y2_co + 2
+')
 Return
 
 Sub Send(byval S As String * 3 , Byval A As Long)
@@ -620,9 +636,9 @@ Read_positions:
    F = F * Collim_fine_length
    Collim_cofin = E + F
 
-'(
-   Gant_cofin = -18000
-   Collim_cofin = 9000
+  '(
+   Gant_cofin = -58618
+   Collim_cofin = 28017
    X1_co = 2048
    X2_co = 2048
    Y1_co = 2048
