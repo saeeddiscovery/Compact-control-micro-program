@@ -39,6 +39,7 @@ Start Watchdog
 
 Dim X As Byte , Y As Byte , I As Byte , J As Byte , K As Byte , S As String * 1 , S1 As String * 50 , S2 As String * 15
 Dim A As Word , B(20) As Word , C As Long , D(2) As String * 50 , G(6) As String * 10 , H(10) As Byte
+Dim Aa As Word , Bb As Word
 
 Dim M As Long , O As Long , P As Long
 Dim E As Single , F As Long , Z As Integer
@@ -63,13 +64,13 @@ Dim X2_co As Long
 Dim Y1_co As Long
 Dim Y2_co As Long
 
-Dim Gant_set As Long , Gant_set_temp As Long
-Dim Collim_set As Long , Collim_set_temp As Long
+Dim Gant_set As Long
+Dim Collim_set As Long
 
-Dim X1_set As Long , X1_set_temp As Long
-Dim X2_set As Long , X2_set_temp As Long
-Dim Y1_set As Long , Y1_set_temp As Long
-Dim Y2_set As Long , Y2_set_temp As Long
+Dim X1_set As Long
+Dim X2_set As Long
+Dim Y1_set As Long
+Dim Y2_set As Long
 
 
 Dim X1_tol As Long , X1_tol0 As Long , X1_tol1 As Long , X1_tol2 As Long
@@ -201,16 +202,10 @@ Enable Urxc
 Enable Ovf0
 Enable Ovf1
 Enable Ovf2
-'(
-   Gant_cofin = -58618
-   Collim_cofin = 28017
-   X1_co = 2048
-   X2_co = 2048
-   Y1_co = 2048
-   Y2_co = 2048
 
-   Adcheck = 2048
-')
+
+'Gosub Read_positions
+
 
 Do
 
@@ -331,6 +326,7 @@ Srin2:
                   Case "a":
                      P = 0
                      P = Get_diag()
+                     'print "gant" ; P
                      P = P - 128
                      P = P * 2
                      If P > 0 Then
@@ -349,6 +345,7 @@ Srin2:
                   Case "b":
                      Collim_v = 0
                      Collim_v = Get_diag()
+                     'print "col" ; Collim_v
                      Call Ao(collim_v , 1)
                      If Collim_v = 128 Then
                         Collim_on = 1
@@ -359,6 +356,7 @@ Srin2:
                   Case "c":
                      X1_v = 0
                      X1_v = Get_diag()
+                     'Print "x1" ; X1_v
                      Call Ao(x1_v , 2)
                      If X1_v = 128 Then
                         X1_on = 1
@@ -369,6 +367,7 @@ Srin2:
                   Case "d":
                   X2_v = 0
                      X2_v = Get_diag()
+                     'Print "x2" ; X2_v
                      Call Ao(x2_v , 3)
                      If X2_v = 128 Then
                         X2_on = 1
@@ -379,6 +378,7 @@ Srin2:
                   Case "e":
                      Y1_v = 0
                      Y1_v = Get_diag()
+                     'Print "y1" ; Y1_v
                      Call Ao(y1_v , 4)
                      If Y1_v = 128 Then
                         Y1_on = 1
@@ -389,6 +389,7 @@ Srin2:
                   Case "f":
                      Y2_v = 0
                      Y2_v = Get_diag()
+                     'Print "y2" ; Y2_v
                      Call Ao(y2_v , 5)
                      If Y2_v = 128 Then
                         Y2_on = 1
@@ -403,6 +404,11 @@ Srin2:
             Case "x":
                Is_service = 100
                Is_diag = 100
+
+            Case "w":
+               Do
+               Loop
+
          End Select
       Else
          Select Case S
@@ -462,6 +468,11 @@ Srin2:
 
          Case "s":
               Is_diag = 100
+
+         Case "w":
+            Do
+            Loop
+
       End Select
    End If
 
@@ -573,7 +584,7 @@ Srout:
    X2_co = X2_co + 2
    Y1_co = Y1_co + 2
    Y2_co = Y2_co + 2
-')
+   ')
 Return
 
 Sub Send(byval S As String * 3 , Byval A As Long)
@@ -636,7 +647,7 @@ Read_positions:
    F = F * Collim_fine_length
    Collim_cofin = E + F
 
-  '(
+   '(
    Gant_cofin = -58618
    Collim_cofin = 28017
    X1_co = 2048
@@ -649,8 +660,10 @@ Read_positions:
 Return
 
 Function Adc_read(byval Adc_number As Byte , Byval Adc_repeat As Byte) As Word
-   A = 16 - Adc_number
-   Porta = A
+   Y = 32 - Adc_number
+   Porta = Y
+   Waitus 1
+
    For J = 1 To Adc_repeat
       Adc_rc = 0
       Waitus 1
@@ -658,14 +671,16 @@ Function Adc_read(byval Adc_number As Byte , Byval Adc_repeat As Byte) As Word
       Loop Until Adc_sts = 0
       Adc_rc = 1
       Waitus 1
+      B(j) = 0
       B(j) = Pinf
+      A = 0
       A = Ping
       A = A And 15
       A = A * 256
       B(j) = B(j) + A
    Next J
 
-   Sort B(1) , Adc_repeat
+   If Adc_repeat > 3 Then Sort B(1) , Adc_repeat
 
    C = 0
    K = 0
@@ -984,31 +999,53 @@ Gant_learn:
    Disable Ovf0
    Disable Ovf2
    Disable Ovf1
-   Stop Watchdog
+   Reset Watchdog
 
-   Gant_v = 75
+   Print "lnv"
+   Gant_v = 0
+   Gant_v = Get_diag()
+   Gant_v = Gant_v - 128
+
    Call Ao(gant_v , 0)
 
    Portd = 127
    Gant_fr = 0
    Gant_rr = 1
 
+   Aa = Gant_lower_limit - 1
+   Bb = Gant_lower_limit + 1
    Do
       Gosub Gant_pot_read
-      If Gant_f1 = Gant_lower_limit Then
+      X = Inkey()
+      If X = 119 Then
+         Do
+         Loop
+      End If
+      If Gant_f1 >= Aa And Gant_f1 <= Bb Then
          Gant_zpnt = Gant_co
          Gant_upper_limit = Gant_f2
          Exit Do
+      'Elseif Gant_co>
       End If
    Loop
 
-
+   Aa = Gant_upper_limit - 1
+   Bb = Gant_upper_limit + 1
    Do
       Gosub Gant_pot_read
-      If Gant_f1 = Gant_upper_limit Then
+      X = Inkey()
+      If X = 119 Then
+         Do
+         Loop
+      End If
+      If Gant_f1 >= Aa And Gant_f1 <= Bb Then
          Gant_length = Gant_co - Gant_zpnt
          Gant_length = Abs(gant_length)
          Exit Do
+      Elseif Gant_f1 > 3800 Then
+         Print "lnk"
+         Do
+         Loop
       End If
    Loop
 
@@ -1020,10 +1057,10 @@ Gant_learn:
 
    Gant_fine_length = Gant_upper_limit - Gant_lower_limit
 '(
-Gant_zpnt = 2048
-Gant_length = 2024
-Gant_fine_length = 2025
-')
+Gant_zpnt = 3550
+Gant_length = 86
+Gant_fine_length = 2191
+ ')
 
    Do
       Print "c43" ; Gant_zpnt
@@ -1068,14 +1105,15 @@ Gant_fine_length = 2025
    Print "lok"
    Enable Ovf0
    Enable Ovf2
-   Enable Ovf1
-   Start Watchdog
+   Reset Watchdog
 Return
 
 Gant_pot_read:
+
+   Reset Watchdog
    For I = 1 To 3
       Adc_rd(i) = 0
-      Adc_rd(i) = Adc_read(i , 2)
+      Adc_rd(i) = Adc_read(i , 8)
    Next I
 
    Gant_co = Adc_rd(1)
@@ -1089,10 +1127,12 @@ Collim_learn:
    Disable Ovf2
    Disable Ovf1
 
-   Stop Watchdog
+   Reset Watchdog
 
+   Print "lnv"
+   Collim_v = 0
+   Collim_v = Get_diag()
 
-   Collim_v = 160
    Call Ao(collim_v , 1)
 
    Portd = 127
@@ -1100,9 +1140,16 @@ Collim_learn:
    Gant_rr = 0
    Collim_on = 0
 
+   Aa = Collim_lower_limit - 1
+   Bb = Collim_lower_limit + 1
    Do
       Gosub Collim_pot_read
-      If Collim_f1 = Collim_lower_limit Then
+      X = Inkey()
+      If X = 119 Then
+         Do
+         Loop
+      End If
+      If Collim_f1 >= Aa And Collim_f1 <= Bb Then
          Collim_zpnt = Collim_co
          Collim_upper_limit = Collim_f2
          Exit Do
@@ -1110,12 +1157,23 @@ Collim_learn:
    Loop
 
 
+   Aa = Collim_upper_limit - 1
+   Bb = Collim_upper_limit + 1
    Do
       Gosub Collim_pot_read
-      If Collim_f1 = Collim_upper_limit Then
+      X = Inkey()
+      If X = 119 Then
+         Do
+         Loop
+      End If
+      If Collim_f1 >= Aa And Collim_f1 <= Bb Then
          Collim_length = Collim_co - Collim_zpnt
          Collim_length = Abs(collim_length)
          Exit Do
+      Elseif Collim_f1 > 3800 Then
+         Print "lnk"
+         Do
+         Loop
       End If
    Loop
 
@@ -1126,9 +1184,9 @@ Collim_learn:
 
    Collim_fine_length = Collim_upper_limit - Collim_lower_limit
 '(
-Collim_zpnt = 2048
-Collim_length = 2024
-Collim_fine_length = 2025
+Collim_zpnt = 324
+Collim_length = 205
+Collim_fine_length = 2197
 ')
 
    Do
@@ -1176,14 +1234,16 @@ Collim_fine_length = 2025
    Enable Ovf0
    Enable Ovf2
    Enable Ovf1
-   Start Watchdog
+   Reset Watchdog
 
 Return
 
 Collim_pot_read:
+
+   Reset Watchdog
    For I = 4 To 6
       Adc_rd(i) = 0
-      Adc_rd(i) = Adc_read(i , 2)
+      Adc_rd(i) = Adc_read(i , 8)
    Next I
 
    Collim_co = Adc_rd(4)
