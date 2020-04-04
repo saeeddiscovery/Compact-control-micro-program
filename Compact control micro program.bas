@@ -105,8 +105,18 @@ Dim Gant_sin As Single , Collim_sin As Single , Collim_cos As Single , Gant_angl
 Dim X_gravity_comp As Single , Y_gravity_comp As Single
 
 
-Dim Gravity_up As Byte , Gravity_down As Byte
+Dim Gravity_up As Byte
 
+Dim X_jaws_c As Word , Y_jaws_c As Word
+Dim X1_in_end_c As Word , X1_out_end_c As Word
+Dim X2_in_end_c As Word , X2_out_end_c As Word
+Dim Y1_in_end_c As Word , Y1_out_end_c As Word
+Dim Y2_in_end_c As Word , Y2_out_end_c As Word
+
+Dim X1_tt As Byte
+Dim X2_tt As Byte
+Dim Y1_tt As Byte
+Dim Y2_tt As Byte
 
 Const Gant_lower_limit = 1024
 Dim Gant_upper_limit As Word
@@ -126,6 +136,11 @@ Dim R_counter As Long , P_counter As Long , S_counter As Long
 R_counter = 0
 P_counter = 0
 S_counter = 0
+
+X1_tt = 0
+X2_tt = 0
+Y1_tt = 0
+Y2_tt = 0
 
 Const Send_delay = 20
 
@@ -151,6 +166,13 @@ Declare Sub Send(byval S As String * 3 , Byval A As Long)
 Declare Sub Get_setpoint()
 Declare Function Get_diag() As Byte
 Declare Function Adc_read(byval Adc_number As Byte , Byval Adc_repeat As Byte) As Word
+
+Dim Chk As Byte
+
+Declare Function X1_check() As Byte
+Declare Function X2_check() As Byte
+Declare Function Y1_check() As Byte
+Declare Function Y2_check() As Byte
 
 Reset Watchdog
 Enable Interrupts
@@ -275,7 +297,16 @@ Init:
    Y2_v2 = Get_init()
    Y2_v3 = Get_init()
    Gravity_up = Get_init()
-   Gravity_down = Get_init()
+   Y_jaws_c = Get_init()
+   X_jaws_c = Get_init()
+   Y1_in_end_c = Get_init()
+   Y1_out_end_c = Get_init()
+   Y2_in_end_c = Get_init()
+   Y2_out_end_c = Get_init()
+   X1_in_end_c = Get_init()
+   X1_out_end_c = Get_init()
+   X2_in_end_c = Get_init()
+   X2_out_end_c = Get_init()
 
    Waitms 1
    S1 = Str(sum)
@@ -577,6 +608,11 @@ Srout:
    End If
 
    Call Send( "adc" , Adcheck)
+
+   If X1_tt > 0 Then Decr X1_tt
+   If X2_tt > 0 Then Decr X2_tt
+   If Y1_tt > 0 Then Decr Y1_tt
+   If Y2_tt > 0 Then Decr Y2_tt
    '(
    Gant_cofin = Gant_cofin + 10
    Collim_cofin = Collim_cofin + 5
@@ -647,14 +683,14 @@ Read_positions:
    F = F * Collim_fine_length
    Collim_cofin = E + F
 
-   '(
+
    Gant_cofin = -58618
    Collim_cofin = 28017
    X1_co = 2048
    X2_co = 2048
    Y1_co = 2048
    Y2_co = 2048
-')
+
    Adcheck = 2048
 
 Return
@@ -922,25 +958,41 @@ Positioning:
    If X1_set = 0 Then
       X1_on = 1
    Else
-      X1_on = 0
+      If X1_check() = 1 Then
+         X1_on = 0
+      Else
+         X1_on = 1
+      End If
    End If
 
-   If X2_set = 0 Then
-      X2_on = 1
+   If x2_set = 0 Then
+      x2_on = 1
    Else
-      X2_on = 0
+      If X2_check() = 1 Then
+         X2_on = 0
+      Else
+         X2_on = 1
+      End If
    End If
 
-   If Y1_set = 0 Then
-      Y1_on = 1
+   If y1_set = 0 Then
+      y1_on = 1
    Else
-      Y1_on = 0
+      If y1_check() = 1 Then
+         Y1_on = 0
+      Else
+         Y2_on = 1
+      End If
    End If
 
-   If Y2_set = 0 Then
+   If y2_set = 0 Then
       Y2_on = 1
    Else
-      Y2_on = 0
+      If Y2_check() = 1 Then
+         Y2_on = 0
+      Else
+         Y2_on = 1
+      End If
    End If
 
 
@@ -1009,8 +1061,8 @@ Gant_learn:
    Call Ao(gant_v , 0)
 
    Portd = 127
-   Gant_fr = 0
-   Gant_rr = 1
+   Gant_fr = 1
+   Gant_rr = 0
 
    Aa = Gant_lower_limit - 1
    Bb = Gant_lower_limit + 1
@@ -1276,3 +1328,86 @@ T2_postscale:
       Gosub Srout
    End If
 Return
+
+
+Function X1_check()as Bit:
+   Local A As Long
+   X1_check = 1
+
+   If X1_co < X1_in_end_c And X1_v > 128 Then X1_check = 0
+   If X1_co > X1_out_end_c And X1_v < 128 Then X1_check = 0
+
+
+   If X1_tt = 0 Then
+      A = X1_co - X2_co
+      A = Abs(a)
+      If A < X_jaws_c And X1_v > 128 Then
+         X1_check = 0
+         X1_tt = 4
+      End If
+   Elseif X1_v > 128 Then
+      X1_check = 0
+   End If
+End Function
+
+
+Function x2_check()as Bit:
+   Local A As Long
+   x2_check = 1
+
+   If x2_co < x2_in_end_c And x2_v > 128 Then x2_check = 0
+   If x2_co > x2_out_end_c And x2_v < 128 Then x2_check = 0
+
+
+   If x2_tt = 0 Then
+      A = X2_co - X1_co
+      A = Abs(a)
+      If A < X_jaws_c And x2_v > 128 Then
+         x2_check = 0
+         x2_tt = 4
+      End If
+   Elseif x2_v > 128 Then
+      X2_check = 0
+   End If
+End Function
+
+Function y1_check()as Bit:
+   Local A As Long
+   y1_check = 1
+
+   If y1_co < y1_in_end_c And y1_v > 128 Then y1_check = 0
+   If y1_co > y1_out_end_c And y1_v < 128 Then y1_check = 0
+
+
+   If y1_tt = 0 Then
+      A = y1_co - y2_co
+      A = Abs(a)
+      If A < y_jaws_c And y1_v > 128 Then
+         y1_check = 0
+         y1_tt = 4
+      End If
+   Elseif y1_v > 128 Then
+      y1_check = 0
+   End If
+End Function
+
+
+Function y2_check()as Bit:
+   Local A As Long
+   y2_check = 1
+
+   If y2_co < y2_in_end_c And y2_v > 128 Then y2_check = 0
+   If y2_co > y2_out_end_c And y2_v < 128 Then y2_check = 0
+
+
+   If y2_tt = 0 Then
+      A = y2_co - y1_co
+      A = Abs(a)
+      If A < y_jaws_c And y2_v > 128 Then
+         y2_check = 0
+         y2_tt = 4
+      End If
+   Elseif y2_v > 128 Then
+      Y2_check = 0
+   End If
+End Function
