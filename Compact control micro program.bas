@@ -683,14 +683,14 @@ Read_positions:
    F = F * Collim_fine_length
    Collim_cofin = E + F
 
-
+    '(
    Gant_cofin = -58618
    Collim_cofin = 28017
    X1_co = 2048
    X2_co = 2048
    Y1_co = 2048
    Y2_co = 2048
-
+      ')
    Adcheck = 2048
 
 Return
