@@ -1,5 +1,8 @@
 # Compact control micro program
 
+[![Generic badge](https://img.shields.io/badge/Company-AitinTech-blue.svg)](http://AitinTech.ir/)
+[!["Contributors"](https://img.shields.io/github/contributors/saeeddiscovery/CompactControl.svg)](https://github.com/saeeddiscovery/CompactControl/graphs/contributors)
+
 ## IDE
 - Use BASCOM-AVR to edit and compile the code (.bas).
 - Use Proteus to edit and run the simulation project (.pdsprj).
